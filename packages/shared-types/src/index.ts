@@ -82,7 +82,10 @@ export interface CashSession {
 }
 
 export type OrderStatus = "open" | "paid" | "cancelled";
-export type OrderType = "counter" | "dine_in" | "delivery";
+export type OrderType = "counter" | "dine_in" | "pickup" | "delivery";
+// Ciclo de preparación en cocina -- independiente de OrderStatus (una orden
+// puede estar 'open' sin cobrar y a la vez 'preparing' en cocina).
+export type KitchenStatus = "new" | "preparing" | "ready";
 
 export interface Order {
   id: ID;
@@ -92,6 +95,16 @@ export interface Order {
   order_type: OrderType;
   table_id: ID | null;
   status: OrderStatus;
+  kitchen_status: KitchenStatus;
+  // Solo aplica según order_type: table_number para dine_in;
+  // customer_name/customer_phone para pickup y delivery;
+  // delivery_address solo para delivery; scheduled_for (ISO datetime) para
+  // pickup/delivery programados a futuro, NULL = lo antes posible.
+  table_number: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  delivery_address: string | null;
+  scheduled_for: string | null;
   subtotal: number;
   tax_amount: number;
   total: number;
