@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Segoe UI", system-ui, sans-serif;
+}
+
+:root {
+  /* Valores por defecto -- Admin > Marca los sobreescribe en tiempo de
+     ejecución (ver useBranding.ts). Mientras nadie configure nada, la app
+     se ve exactamente igual que antes de que existiera el módulo de marca. */
+  --brand-primary: #2563eb; /* blue-600 */
+  --brand-background: #f5f5f5; /* neutral-100 */
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply text-neutral-900;
+  background-color: var(--brand-background);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  /* Evita selección de texto accidental y el menú contextual del navegador
+     en una pantalla táctil de mostrador. */
+  -webkit-user-select: none;
+  user-select: none;
+}

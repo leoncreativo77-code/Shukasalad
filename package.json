@@ -1,0 +1,17 @@
+{
+  "name": "pos-restaurante",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/desktop",
+    "apps/web",
+    "apps/cloud-api",
+    "packages/*"
+  ],
+  "scripts": {
+    "desktop:dev": "npm run tauri dev --workspace apps/desktop",
+    "desktop:build": "npm run tauri build --workspace apps/desktop",
+    "web:dev": "npm run dev --workspace apps/web",
+    "web:build": "npm run build --workspace apps/web"
+  }
+}
