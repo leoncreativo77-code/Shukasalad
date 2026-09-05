@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "../db/client";
+import { writeOutboxEvent } from "../db/outbox";
 
 // Equivalente web de shared/tauri/pickAndCopyImage.ts: abre el selector de
 // archivos nativo del navegador (<input type="file"> oculto) y, si el
@@ -26,7 +27,11 @@ export function pickImage(
       }
       const db = await getDb();
       const id = uuidv4();
-      await db.images.add({ id, blob: file, created_at: new Date().toISOString() });
+      const created_at = new Date().toISOString();
+      await db.images.add({ id, blob: file, created_at });
+      // El respaldo a servidor (ver shared/sync) sube el Blob a Supabase
+      // Storage cuando encuentre este evento en la cola.
+      await writeOutboxEvent(db, "image", id, "insert", { id, created_at });
       resolve(id);
     };
     // Soporte best-effort: no todos los navegadores emiten "cancel" en
