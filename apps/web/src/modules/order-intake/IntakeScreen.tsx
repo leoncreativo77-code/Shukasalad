@@ -3,7 +3,13 @@ import { getDb } from "../../shared/db/client";
 import { createOrder } from "../../shared/db/repositories/orders";
 import { useAuthStore } from "../../shared/auth/store";
 import { useCatalogCart } from "../../shared/orders/useCatalogCart";
-import { buildTicketText, buildWhatsAppLink } from "../../shared/whatsapp/ticket";
+import {
+  buildTicketText,
+  buildWhatsAppLink,
+  type TicketOrderInfo,
+} from "../../shared/whatsapp/ticket";
+import { buildComandaText } from "../../shared/print/comanda";
+import { usePrint } from "../../shared/print/usePrint";
 import { ProductGrid } from "../sales/ProductGrid";
 import { ModifierPicker } from "../sales/ModifierPicker";
 import { CartPanel } from "../sales/CartPanel";
@@ -56,11 +62,9 @@ export function IntakeScreen() {
   const [details, setDetails] = useState<IntakeDetails>(EMPTY_DETAILS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastTicket, setLastTicket] = useState<{
-    orderNumber: number;
-    text: string;
-  } | null>(null);
+  const [lastOrder, setLastOrder] = useState<TicketOrderInfo | null>(null);
   const [waPhone, setWaPhone] = useState("");
+  const { print, printArea } = usePrint();
 
   async function handleSaveOrder() {
     if (!currentUser || !cashSession || cart.length === 0) return;
@@ -90,7 +94,11 @@ export function IntakeScreen() {
           ? new Date(details.scheduledFor).toISOString()
           : undefined,
       });
-      const text = buildTicketText({
+      // Recoger/domicilio ya piden el teléfono del cliente como parte del
+      // pedido -- se reusa aquí para no volver a teclearlo.
+      setWaPhone(orderType !== "dine_in" ? details.customerPhone.trim() : "");
+      clearCart();
+      setLastOrder({
         orderNumber: result.orderNumber,
         orderType,
         lines: cart,
@@ -100,12 +108,7 @@ export function IntakeScreen() {
         tableNumber: orderType === "dine_in" ? details.tableNumber.trim() : null,
         customerName: orderType !== "dine_in" ? details.customerName.trim() : null,
       });
-      // Recoger/domicilio ya piden el teléfono del cliente como parte del
-      // pedido -- se reusa aquí para no volver a teclearlo.
-      setWaPhone(orderType !== "dine_in" ? details.customerPhone.trim() : "");
-      clearCart();
       setDetails(EMPTY_DETAILS);
-      setLastTicket({ orderNumber: result.orderNumber, text });
     } finally {
       setSaving(false);
     }
@@ -114,8 +117,8 @@ export function IntakeScreen() {
   // Se abre solo en respuesta directa a este clic (no encadenado tras un
   // await) para que Safari/iOS no lo trate como pop-up y lo bloquee.
   function handleSendWhatsApp() {
-    if (!lastTicket || !waPhone.trim()) return;
-    window.open(buildWhatsAppLink(waPhone, lastTicket.text), "_blank");
+    if (!lastOrder || !waPhone.trim()) return;
+    window.open(buildWhatsAppLink(waPhone, buildTicketText(lastOrder)), "_blank");
   }
 
   return (
@@ -167,20 +170,20 @@ export function IntakeScreen() {
           {error}
         </div>
       )}
-      {lastTicket && (
+      {lastOrder && (
         <div className="fixed bottom-6 left-1/2 w-full max-w-sm -translate-x-1/2 rounded-xl bg-neutral-900 p-4 text-white shadow-lg">
           <div className="mb-2 flex items-center justify-between">
             <p className="font-medium">
-              Pedido #{lastTicket.orderNumber} enviado a cocina
+              Pedido #{lastOrder.orderNumber} enviado a cocina
             </p>
             <button
-              onClick={() => setLastTicket(null)}
+              onClick={() => setLastOrder(null)}
               className="text-neutral-400 hover:text-white"
             >
               ✕
             </button>
           </div>
-          <div className="flex gap-2">
+          <div className="mb-2 flex gap-2">
             <input
               value={waPhone}
               onChange={(e) => setWaPhone(e.target.value)}
@@ -196,8 +199,24 @@ export function IntakeScreen() {
               Enviar
             </button>
           </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => print(buildTicketText(lastOrder))}
+              className="flex-1 rounded-lg border border-neutral-700 px-3 py-2 text-sm font-medium hover:bg-neutral-800"
+            >
+              🖨️ Imprimir ticket
+            </button>
+            <button
+              onClick={() => print(buildComandaText(lastOrder))}
+              className="flex-1 rounded-lg border border-neutral-700 px-3 py-2 text-sm font-medium hover:bg-neutral-800"
+            >
+              🖨️ Imprimir comanda
+            </button>
+          </div>
         </div>
       )}
+
+      {printArea}
     </div>
   );
 }

@@ -5,6 +5,7 @@ interface KitchenOrderCardProps {
   order: KitchenOrder;
   onAdvance: () => void;
   onGoBack: () => void;
+  onPrint: () => void;
 }
 
 function orderLabel(order: KitchenOrder): string {
@@ -26,7 +27,12 @@ const ADVANCE_LABEL: Record<KitchenOrder["kitchenStatus"], string> = {
   ready: "",
 };
 
-export function KitchenOrderCard({ order, onAdvance, onGoBack }: KitchenOrderCardProps) {
+export function KitchenOrderCard({
+  order,
+  onAdvance,
+  onGoBack,
+  onPrint,
+}: KitchenOrderCardProps) {
   const time = new Date(order.createdAt).toLocaleTimeString("es-MX", {
     hour: "2-digit",
     minute: "2-digit",
@@ -90,6 +96,13 @@ export function KitchenOrderCard({ order, onAdvance, onGoBack }: KitchenOrderCar
             ← Regresar
           </TouchButton>
         )}
+        <TouchButton
+          variant="ghost"
+          className="min-h-0 px-3 py-2 text-sm"
+          onClick={onPrint}
+        >
+          🖨️
+        </TouchButton>
         {order.kitchenStatus !== "ready" && (
           <TouchButton className="min-h-0 flex-1 px-3 py-2 text-sm" onClick={onAdvance}>
             {ADVANCE_LABEL[order.kitchenStatus]}

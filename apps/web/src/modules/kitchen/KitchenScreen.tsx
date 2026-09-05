@@ -6,6 +6,8 @@ import {
   setKitchenStatus,
   type KitchenOrder,
 } from "../../shared/db/repositories/kitchenOrders";
+import { buildComandaTextFromKitchenOrder } from "../../shared/print/comanda";
+import { usePrint } from "../../shared/print/usePrint";
 import { KitchenOrderCard } from "./KitchenOrderCard";
 
 const COLUMNS: { status: KitchenStatus; title: string }[] = [
@@ -32,6 +34,7 @@ const PREV_STATUS: Record<KitchenStatus, KitchenStatus | null> = {
 // Venta/Pedidos aparezca aquí casi al instante.
 export function KitchenScreen() {
   const [orders, setOrders] = useState<KitchenOrder[]>([]);
+  const { print, printArea } = usePrint();
 
   const reload = useCallback(async () => {
     const db = await getDb();
@@ -78,6 +81,7 @@ export function KitchenScreen() {
                     const prev = PREV_STATUS[order.kitchenStatus];
                     if (prev) handleChangeStatus(order.id, prev);
                   }}
+                  onPrint={() => print(buildComandaTextFromKitchenOrder(order))}
                 />
               ))}
               {columnOrders.length === 0 && (
@@ -87,6 +91,8 @@ export function KitchenScreen() {
           </div>
         );
       })}
+
+      {printArea}
     </div>
   );
 }

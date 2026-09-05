@@ -29,3 +29,22 @@ body {
   -webkit-user-select: none;
   user-select: none;
 }
+
+/* Imprimir ticket/comanda (ver shared/print/usePrint.tsx): oculta toda la
+   interfaz y muestra solo el contenido de .print-area, angosto como un
+   recibo térmico de 80mm. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 80mm;
+  }
+}
