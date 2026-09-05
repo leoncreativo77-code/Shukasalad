@@ -3,6 +3,7 @@ import { getDb } from "../../shared/db/client";
 import { createOrder } from "../../shared/db/repositories/orders";
 import { useAuthStore } from "../../shared/auth/store";
 import { useCatalogCart } from "../../shared/orders/useCatalogCart";
+import { buildTicketText, buildWhatsAppLink } from "../../shared/whatsapp/ticket";
 import { ProductGrid } from "../sales/ProductGrid";
 import { ModifierPicker } from "../sales/ModifierPicker";
 import { CartPanel } from "../sales/CartPanel";
@@ -55,7 +56,11 @@ export function IntakeScreen() {
   const [details, setDetails] = useState<IntakeDetails>(EMPTY_DETAILS);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [lastTicket, setLastTicket] = useState<{
+    orderNumber: number;
+    text: string;
+  } | null>(null);
+  const [waPhone, setWaPhone] = useState("");
 
   async function handleSaveOrder() {
     if (!currentUser || !cashSession || cart.length === 0) return;
@@ -85,13 +90,32 @@ export function IntakeScreen() {
           ? new Date(details.scheduledFor).toISOString()
           : undefined,
       });
+      const text = buildTicketText({
+        orderNumber: result.orderNumber,
+        orderType,
+        lines: cart,
+        subtotal: result.totals.subtotal,
+        taxAmount: result.totals.taxAmount,
+        total: result.totals.total,
+        tableNumber: orderType === "dine_in" ? details.tableNumber.trim() : null,
+        customerName: orderType !== "dine_in" ? details.customerName.trim() : null,
+      });
+      // Recoger/domicilio ya piden el teléfono del cliente como parte del
+      // pedido -- se reusa aquí para no volver a teclearlo.
+      setWaPhone(orderType !== "dine_in" ? details.customerPhone.trim() : "");
       clearCart();
       setDetails(EMPTY_DETAILS);
-      setConfirmation(`Pedido #${result.orderNumber} enviado a cocina`);
-      setTimeout(() => setConfirmation(null), 3000);
+      setLastTicket({ orderNumber: result.orderNumber, text });
     } finally {
       setSaving(false);
     }
+  }
+
+  // Se abre solo en respuesta directa a este clic (no encadenado tras un
+  // await) para que Safari/iOS no lo trate como pop-up y lo bloquee.
+  function handleSendWhatsApp() {
+    if (!lastTicket || !waPhone.trim()) return;
+    window.open(buildWhatsAppLink(waPhone, lastTicket.text), "_blank");
   }
 
   return (
@@ -143,9 +167,35 @@ export function IntakeScreen() {
           {error}
         </div>
       )}
-      {confirmation && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-xl bg-neutral-900 px-6 py-3 font-medium text-white shadow-lg">
-          {confirmation}
+      {lastTicket && (
+        <div className="fixed bottom-6 left-1/2 w-full max-w-sm -translate-x-1/2 rounded-xl bg-neutral-900 p-4 text-white shadow-lg">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="font-medium">
+              Pedido #{lastTicket.orderNumber} enviado a cocina
+            </p>
+            <button
+              onClick={() => setLastTicket(null)}
+              className="text-neutral-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={waPhone}
+              onChange={(e) => setWaPhone(e.target.value)}
+              placeholder="WhatsApp del cliente"
+              type="tel"
+              className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder:text-neutral-400"
+            />
+            <button
+              onClick={handleSendWhatsApp}
+              disabled={!waPhone.trim()}
+              className="shrink-0 rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Enviar
+            </button>
+          </div>
         </div>
       )}
     </div>

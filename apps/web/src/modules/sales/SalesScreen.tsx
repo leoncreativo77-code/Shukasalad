@@ -3,6 +3,7 @@ import { getDb } from "../../shared/db/client";
 import { createOrder } from "../../shared/db/repositories/orders";
 import { useAuthStore } from "../../shared/auth/store";
 import { useCatalogCart } from "../../shared/orders/useCatalogCart";
+import { buildTicketText, buildWhatsAppLink } from "../../shared/whatsapp/ticket";
 import { ProductGrid } from "./ProductGrid";
 import { ModifierPicker } from "./ModifierPicker";
 import { CartPanel } from "./CartPanel";
@@ -25,7 +26,11 @@ export function SalesScreen() {
   } = useCatalogCart();
 
   const [saving, setSaving] = useState(false);
-  const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [lastTicket, setLastTicket] = useState<{
+    orderNumber: number;
+    text: string;
+  } | null>(null);
+  const [waPhone, setWaPhone] = useState("");
 
   async function handleSaveOrder() {
     if (!currentUser || !cashSession || cart.length === 0) return;
@@ -38,12 +43,27 @@ export function SalesScreen() {
         orderType: "counter",
         lines: cart,
       });
+      const text = buildTicketText({
+        orderNumber: result.orderNumber,
+        orderType: "counter",
+        lines: cart,
+        subtotal: result.totals.subtotal,
+        taxAmount: result.totals.taxAmount,
+        total: result.totals.total,
+      });
       clearCart();
-      setConfirmation(`Orden #${result.orderNumber} guardada`);
-      setTimeout(() => setConfirmation(null), 3000);
+      setWaPhone("");
+      setLastTicket({ orderNumber: result.orderNumber, text });
     } finally {
       setSaving(false);
     }
+  }
+
+  // Se abre solo en respuesta directa a este clic (no encadenado tras un
+  // await) para que Safari/iOS no lo trate como pop-up y lo bloquee.
+  function handleSendWhatsApp() {
+    if (!lastTicket || !waPhone.trim()) return;
+    window.open(buildWhatsAppLink(waPhone, lastTicket.text), "_blank");
   }
 
   return (
@@ -77,9 +97,33 @@ export function SalesScreen() {
         />
       )}
 
-      {confirmation && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-xl bg-neutral-900 px-6 py-3 font-medium text-white shadow-lg">
-          {confirmation}
+      {lastTicket && (
+        <div className="fixed bottom-6 left-1/2 w-full max-w-sm -translate-x-1/2 rounded-xl bg-neutral-900 p-4 text-white shadow-lg">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="font-medium">Orden #{lastTicket.orderNumber} guardada</p>
+            <button
+              onClick={() => setLastTicket(null)}
+              className="text-neutral-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={waPhone}
+              onChange={(e) => setWaPhone(e.target.value)}
+              placeholder="WhatsApp del cliente"
+              type="tel"
+              className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-white placeholder:text-neutral-400"
+            />
+            <button
+              onClick={handleSendWhatsApp}
+              disabled={!waPhone.trim()}
+              className="shrink-0 rounded-lg bg-green-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              Enviar
+            </button>
+          </div>
         </div>
       )}
     </div>
