@@ -41,6 +41,18 @@ pub fn run() {
       sql: include_str!("../migrations/0002_admin_features.sql"),
       kind: MigrationKind::Up,
     },
+    Migration {
+      version: 3,
+      description: "fix_demo_admin_role",
+      sql: include_str!("../migrations/0003_fix_demo_admin_role.sql"),
+      kind: MigrationKind::Up,
+    },
+    Migration {
+      version: 4,
+      description: "orders_intake_kitchen",
+      sql: include_str!("../migrations/0004_orders_intake_kitchen.sql"),
+      kind: MigrationKind::Up,
+    },
   ];
 
   tauri::Builder::default()

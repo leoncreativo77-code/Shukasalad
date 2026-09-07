@@ -5,6 +5,10 @@ import { useBranding } from "../shared/branding/useBranding";
 const TAB_CLASSES =
   "flex items-center rounded-lg px-5 py-2 text-lg font-semibold transition-colors";
 
+function tabClassName(isActive: boolean) {
+  return `${TAB_CLASSES} ${isActive ? "bg-[var(--brand-primary)] text-white" : "text-neutral-600 hover:bg-neutral-100"}`;
+}
+
 export function AppShell() {
   const currentUser = useAuthStore((s) => s.currentUser);
   const logout = useAuthStore((s) => s.logout);
@@ -18,21 +22,17 @@ export function AppShell() {
             <img src={logoSrc} alt="Logo" className="h-9 w-9 rounded object-contain" />
           )}
           <nav className="flex gap-2">
-            <NavLink
-              to="/venta"
-              className={({ isActive }) =>
-                `${TAB_CLASSES} ${isActive ? "bg-[var(--brand-primary)] text-white" : "text-neutral-600 hover:bg-neutral-100"}`
-              }
-            >
+            <NavLink to="/venta" className={({ isActive }) => tabClassName(isActive)}>
               Venta
             </NavLink>
+            <NavLink to="/pedidos" className={({ isActive }) => tabClassName(isActive)}>
+              Pedidos
+            </NavLink>
+            <NavLink to="/cocina" className={({ isActive }) => tabClassName(isActive)}>
+              Cocina
+            </NavLink>
             {currentUser?.role === "admin" && (
-              <NavLink
-                to="/admin"
-                className={({ isActive }) =>
-                  `${TAB_CLASSES} ${isActive ? "bg-[var(--brand-primary)] text-white" : "text-neutral-600 hover:bg-neutral-100"}`
-                }
-              >
+              <NavLink to="/admin" className={({ isActive }) => tabClassName(isActive)}>
                 Admin
               </NavLink>
             )}

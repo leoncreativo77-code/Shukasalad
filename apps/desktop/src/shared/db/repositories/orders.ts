@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import type Database from "@tauri-apps/plugin-sql";
-import type { CartLine } from "@pos/shared-types";
-import { withTransaction } from "../transaction";
+import type { CartLine, OrderType } from "@pos/shared-types";
 import { writeOutboxEvent } from "../outbox";
 import { getDefaultTaxRate } from "./taxRates";
 
@@ -44,7 +43,13 @@ async function nextOrderNumber(
 export interface NewOrder {
   cashSessionId: string;
   userId: string;
+  orderType: OrderType;
   lines: CartLine[];
+  tableNumber?: string;
+  customerName?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
+  scheduledFor?: string;
 }
 
 export interface CreatedOrder {
@@ -53,8 +58,9 @@ export interface CreatedOrder {
   totals: OrderTotals;
 }
 
-// Persiste una orden de mostrador completa (orden + líneas + modificadores)
-// como status 'open' -- todavía sin cobrar. El cobro y cierre de la orden se
+// Persiste una orden completa (orden + líneas + modificadores) como status
+// 'open' -- todavía sin cobrar -- y kitchen_status 'new', lista para
+// aparecer en el tablero de Cocina. El cobro/cierre de la orden se
 // construyen en la siguiente etapa (módulo de pagos).
 export async function createOrder(
   db: Database,
@@ -70,70 +76,82 @@ export async function createOrder(
   const orderNumber = await nextOrderNumber(db, input.cashSessionId);
   const now = new Date().toISOString();
 
-  await withTransaction(db, async () => {
+  await db.execute(
+    `INSERT INTO orders
+       (id, order_number, cash_session_id, user_id, order_type, table_id, status, kitchen_status,
+        table_number, customer_name, customer_phone, delivery_address, scheduled_for,
+        subtotal, tax_amount, total, created_at)
+     VALUES ($1, $2, $3, $4, $5, NULL, 'open', 'new', $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+    [
+      orderId,
+      orderNumber,
+      input.cashSessionId,
+      input.userId,
+      input.orderType,
+      input.tableNumber ?? null,
+      input.customerName ?? null,
+      input.customerPhone ?? null,
+      input.deliveryAddress ?? null,
+      input.scheduledFor ?? null,
+      totals.subtotal,
+      totals.taxAmount,
+      totals.total,
+      now,
+    ],
+  );
+
+  const itemsPayload = [];
+  for (const line of input.lines) {
+    const itemId = uuidv4();
     await db.execute(
-      `INSERT INTO orders
-         (id, order_number, cash_session_id, user_id, order_type, table_id, status, subtotal, tax_amount, total, created_at)
-       VALUES ($1, $2, $3, $4, 'counter', NULL, 'open', $5, $6, $7, $8)`,
+      `INSERT INTO order_items
+         (id, order_id, product_id, product_name_snapshot, unit_price_snapshot, quantity, notes, line_subtotal)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
+        itemId,
         orderId,
-        orderNumber,
-        input.cashSessionId,
-        input.userId,
-        totals.subtotal,
-        totals.taxAmount,
-        totals.total,
-        now,
+        line.product_id,
+        line.product_name,
+        line.unit_price,
+        line.quantity,
+        line.notes || null,
+        lineTotal(line),
       ],
     );
 
-    const itemsPayload = [];
-    for (const line of input.lines) {
-      const itemId = uuidv4();
+    const modifiersPayload = [];
+    for (const mod of line.modifiers) {
+      const modId = uuidv4();
       await db.execute(
-        `INSERT INTO order_items
-           (id, order_id, product_id, product_name_snapshot, unit_price_snapshot, quantity, notes, line_subtotal)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [
-          itemId,
-          orderId,
-          line.product_id,
-          line.product_name,
-          line.unit_price,
-          line.quantity,
-          line.notes || null,
-          lineTotal(line),
-        ],
+        `INSERT INTO order_item_modifiers
+           (id, order_item_id, modifier_id, modifier_name_snapshot, price_delta_snapshot)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [modId, itemId, mod.modifier_id, mod.name, mod.price_delta],
       );
-
-      const modifiersPayload = [];
-      for (const mod of line.modifiers) {
-        const modId = uuidv4();
-        await db.execute(
-          `INSERT INTO order_item_modifiers
-             (id, order_item_id, modifier_id, modifier_name_snapshot, price_delta_snapshot)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [modId, itemId, mod.modifier_id, mod.name, mod.price_delta],
-        );
-        modifiersPayload.push({ id: modId, ...mod });
-      }
-
-      itemsPayload.push({ id: itemId, ...line, modifiers: modifiersPayload });
+      modifiersPayload.push({ id: modId, ...mod });
     }
 
-    await writeOutboxEvent(db, "order", orderId, "insert", {
-      id: orderId,
-      order_number: orderNumber,
-      cash_session_id: input.cashSessionId,
-      user_id: input.userId,
-      order_type: "counter",
-      status: "open",
-      subtotal: totals.subtotal,
-      tax_amount: totals.taxAmount,
-      total: totals.total,
-      created_at: now,
-      items: itemsPayload,
-    });
+    itemsPayload.push({ id: itemId, ...line, modifiers: modifiersPayload });
+  }
+
+  await writeOutboxEvent(db, "order", orderId, "insert", {
+    id: orderId,
+    order_number: orderNumber,
+    cash_session_id: input.cashSessionId,
+    user_id: input.userId,
+    order_type: input.orderType,
+    status: "open",
+    kitchen_status: "new",
+    table_number: input.tableNumber ?? null,
+    customer_name: input.customerName ?? null,
+    customer_phone: input.customerPhone ?? null,
+    delivery_address: input.deliveryAddress ?? null,
+    scheduled_for: input.scheduledFor ?? null,
+    subtotal: totals.subtotal,
+    tax_amount: totals.taxAmount,
+    total: totals.total,
+    created_at: now,
+    items: itemsPayload,
   });
 
   return { id: orderId, orderNumber, totals };

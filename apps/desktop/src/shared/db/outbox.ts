@@ -4,9 +4,12 @@ import { getDeviceId } from "./device";
 
 export type OutboxOperation = "insert" | "update";
 
-// Encola un evento para sincronizar hacia la nube. Debe llamarse dentro de la
-// misma transacción que la escritura de negocio (ver withTransaction) para
-// garantizar que nunca quede una venta sin su evento correspondiente.
+// Encola un evento para sincronizar hacia la nube. Se llama justo después de
+// la escritura de negocio correspondiente (mismo statement autocommit de
+// SQLite; no se usa BEGIN/COMMIT manual entre llamadas porque el plugin SQL
+// de Tauri reparte las queries entre varias conexiones de un pool, y el
+// estado de una transacción vive por conexión -- ver historial de este
+// archivo/commit para el bug que esto causaba).
 // El envío real (POST /sync/events del cloud-api) se implementa en la
 // siguiente etapa; por ahora los eventos solo se acumulan con synced_at NULL.
 export async function writeOutboxEvent(

@@ -2,7 +2,6 @@ import { v4 as uuidv4 } from "uuid";
 import type Database from "@tauri-apps/plugin-sql";
 import type { User, UserRole } from "@pos/shared-types";
 import { sha256Hex } from "../../auth/pinHash";
-import { withTransaction } from "../transaction";
 import { writeOutboxEvent } from "../outbox";
 
 interface UserRow {
@@ -79,21 +78,19 @@ export async function createUser(
     updated_at: now,
   };
 
-  await withTransaction(db, async () => {
-    await db.execute(
-      `INSERT INTO users (id, name, pin_hash, role, active, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, 1, $5, $5)`,
-      [id, user.name, pinHash, user.role, now],
-    );
-    // No se manda el pin_hash a la nube: solo lo necesario para reportes.
-    await writeOutboxEvent(db, "user", id, "insert", {
-      id,
-      name: user.name,
-      role: user.role,
-      active: true,
-      created_at: now,
-      updated_at: now,
-    });
+  await db.execute(
+    `INSERT INTO users (id, name, pin_hash, role, active, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, 1, $5, $5)`,
+    [id, user.name, pinHash, user.role, now],
+  );
+  // No se manda el pin_hash a la nube: solo lo necesario para reportes.
+  await writeOutboxEvent(db, "user", id, "insert", {
+    id,
+    name: user.name,
+    role: user.role,
+    active: true,
+    created_at: now,
+    updated_at: now,
   });
 
   return user;
@@ -105,11 +102,9 @@ export async function setUserActive(
   active: boolean,
 ): Promise<void> {
   const now = new Date().toISOString();
-  await withTransaction(db, async () => {
-    await db.execute(
-      "UPDATE users SET active = $1, updated_at = $2 WHERE id = $3",
-      [active ? 1 : 0, now, id],
-    );
-    await writeOutboxEvent(db, "user", id, "update", { id, active });
-  });
+  await db.execute(
+    "UPDATE users SET active = $1, updated_at = $2 WHERE id = $3",
+    [active ? 1 : 0, now, id],
+  );
+  await writeOutboxEvent(db, "user", id, "update", { id, active });
 }

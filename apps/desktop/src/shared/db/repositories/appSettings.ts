@@ -1,5 +1,4 @@
 import type Database from "@tauri-apps/plugin-sql";
-import { withTransaction } from "../transaction";
 import { writeOutboxEvent } from "../outbox";
 
 export async function getSetting(
@@ -18,21 +17,17 @@ export async function setSetting(
   key: string,
   value: string,
 ): Promise<void> {
-  await withTransaction(db, async () => {
-    await db.execute(
-      `INSERT INTO app_settings (key, value) VALUES ($1, $2)
-       ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
-      [key, value],
-    );
-    await writeOutboxEvent(db, "app_setting", key, "update", { key, value });
-  });
+  await db.execute(
+    `INSERT INTO app_settings (key, value) VALUES ($1, $2)
+     ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
+    [key, value],
+  );
+  await writeOutboxEvent(db, "app_setting", key, "update", { key, value });
 }
 
 // Elimina una configuración (ej. "quitar imagen de fondo" para volver al
 // color plano).
 export async function clearSetting(db: Database, key: string): Promise<void> {
-  await withTransaction(db, async () => {
-    await db.execute("DELETE FROM app_settings WHERE key = $1", [key]);
-    await writeOutboxEvent(db, "app_setting", key, "update", { key, value: null });
-  });
+  await db.execute("DELETE FROM app_settings WHERE key = $1", [key]);
+  await writeOutboxEvent(db, "app_setting", key, "update", { key, value: null });
 }

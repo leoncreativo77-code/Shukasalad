@@ -1,8 +1,11 @@
 import type { ReactNode } from "react";
 import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useAuthStore } from "../shared/auth/store";
+import { useBranding } from "../shared/branding/useBranding";
 import { LoginScreen } from "../modules/auth/LoginScreen";
 import { SalesScreen } from "../modules/sales/SalesScreen";
+import { IntakeScreen } from "../modules/order-intake/IntakeScreen";
+import { KitchenScreen } from "../modules/kitchen/KitchenScreen";
 import { AdminScreen } from "../modules/admin/AdminScreen";
 import { AppShell } from "./AppShell";
 
@@ -19,6 +22,9 @@ function RequireAdmin({ children }: { children: ReactNode }) {
 
 export function App() {
   const currentUser = useAuthStore((s) => s.currentUser);
+  // Se llama aquí (y no solo dentro de AppShell) para que el fondo/color de
+  // marca también se vea en la pantalla de login, antes de autenticarse.
+  useBranding();
 
   if (!currentUser) {
     return <LoginScreen />;
@@ -29,6 +35,8 @@ export function App() {
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/venta" element={<SalesScreen />} />
+          <Route path="/pedidos" element={<IntakeScreen />} />
+          <Route path="/cocina" element={<KitchenScreen />} />
           <Route
             path="/admin"
             element={
