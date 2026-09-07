@@ -37,6 +37,7 @@ export async function seedIfEmpty(db: PosDatabase): Promise<void> {
     { id: "b1a1c2d3-0001-4a11-9c11-000000000005", name: "Papas", sort_order: 4 },
     { id: "b1a1c2d3-0001-4a11-9c11-000000000006", name: "Boneless", sort_order: 5 },
     { id: "b1a1c2d3-0001-4a11-9c11-000000000004", name: "Bebidas", sort_order: 6 },
+    { id: "b1a1c2d3-0001-4a11-9c11-000000000007", name: "Extras", sort_order: 7 },
   ];
   await db.categories.bulkAdd(
     categories.map((c) => ({
@@ -176,6 +177,33 @@ export async function seedIfEmpty(db: PosDatabase): Promise<void> {
       price: 35.0,
       sku: "BEB-002",
       sort_order: 4,
+    },
+    {
+      id: "b1a1c2d3-0002-4a11-9c11-000000000015",
+      category_id: categories[6].id,
+      name: "Proteína",
+      description: null,
+      price: 40.0,
+      sku: "EXT-001",
+      sort_order: 1,
+    },
+    {
+      id: "b1a1c2d3-0002-4a11-9c11-000000000016",
+      category_id: categories[6].id,
+      name: "Vegetales",
+      description: null,
+      price: 30.0,
+      sku: "EXT-002",
+      sort_order: 2,
+    },
+    {
+      id: "b1a1c2d3-0002-4a11-9c11-000000000017",
+      category_id: categories[6].id,
+      name: "Frutos Rojos",
+      description: null,
+      price: 30.0,
+      sku: "EXT-003",
+      sort_order: 3,
     },
   ];
   await db.products.bulkAdd(
