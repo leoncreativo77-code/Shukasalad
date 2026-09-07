@@ -12,6 +12,8 @@ import { TouchButton } from "../../shared/components/TouchButton";
 const DEFAULT_PRIMARY = "#2563eb";
 const DEFAULT_BACKGROUND = "#f5f5f5";
 
+const DEFAULT_APP_NAME = "POS Restaurante";
+
 export function BrandScreen() {
   const [logoImageId, setLogoImageId] = useState<string | null>(null);
   const [primaryColor, setPrimaryColor] = useState(DEFAULT_PRIMARY);
@@ -19,6 +21,7 @@ export function BrandScreen() {
   const [backgroundImageId, setBackgroundImageId] = useState<string | null>(
     null,
   );
+  const [appName, setAppName] = useState("");
 
   const logoUrl = useImageUrl(logoImageId);
   const backgroundUrl = useImageUrl(backgroundImageId);
@@ -26,16 +29,18 @@ export function BrandScreen() {
   useEffect(() => {
     (async () => {
       const db = await getDb();
-      const [logo, primary, bgColor, bgImage] = await Promise.all([
+      const [logo, primary, bgColor, bgImage, name] = await Promise.all([
         getSetting(db, "brand_logo_path"),
         getSetting(db, "brand_primary_color"),
         getSetting(db, "brand_background_color"),
         getSetting(db, "brand_background_image_path"),
+        getSetting(db, "brand_app_name"),
       ]);
       setLogoImageId(logo);
       setPrimaryColor(primary ?? DEFAULT_PRIMARY);
       setBackgroundColor(bgColor ?? DEFAULT_BACKGROUND);
       setBackgroundImageId(bgImage);
+      setAppName(name ?? "");
     })();
   }, []);
 
@@ -83,11 +88,37 @@ export function BrandScreen() {
     setBackgroundImageId(null);
   }
 
+  // Se guarda al salir del campo (no en cada tecla) para no generar un
+  // evento de sincronización por cada letra escrita.
+  async function handleAppNameBlur() {
+    const db = await getDb();
+    const trimmed = appName.trim();
+    if (trimmed) {
+      await setSetting(db, "brand_app_name", trimmed);
+    } else {
+      await clearSetting(db, "brand_app_name");
+    }
+  }
+
   return (
     <div className="h-full overflow-y-auto p-6">
       <h2 className="mb-6 text-xl font-semibold text-neutral-800">Marca</h2>
 
       <div className="max-w-lg space-y-8">
+        <section>
+          <h3 className="mb-2 font-medium text-neutral-700">Nombre del negocio</h3>
+          <input
+            value={appName}
+            onChange={(e) => setAppName(e.target.value)}
+            onBlur={handleAppNameBlur}
+            placeholder={DEFAULT_APP_NAME}
+            className="w-full rounded-lg border border-neutral-300 px-3 py-2"
+          />
+          <p className="mt-1 text-sm text-neutral-400">
+            Se muestra en la pantalla de inicio, donde se ingresa el PIN.
+          </p>
+        </section>
+
         <section>
           <h3 className="mb-2 font-medium text-neutral-700">Logo</h3>
           <div className="flex items-center gap-4">

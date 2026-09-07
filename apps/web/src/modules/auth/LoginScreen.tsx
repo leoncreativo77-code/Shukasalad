@@ -3,6 +3,7 @@ import { getDb } from "../../shared/db/client";
 import { findUserByPin } from "../../shared/db/repositories/users";
 import { getOpenCashSession } from "../../shared/db/repositories/cashSessions";
 import { useAuthStore } from "../../shared/auth/store";
+import { useBranding } from "../../shared/branding/useBranding";
 import { NumPad } from "../../shared/components/NumPad";
 
 export function LoginScreen() {
@@ -10,6 +11,7 @@ export function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const login = useAuthStore((s) => s.login);
+  const { appName } = useBranding();
 
   async function handlePinChange(next: string) {
     setPin(next);
@@ -41,7 +43,7 @@ export function LoginScreen() {
     <div className="flex h-full items-center justify-center bg-neutral-100">
       <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-md">
         <h1 className="mb-1 text-center text-2xl font-bold text-neutral-800">
-          POS Restaurante
+          {appName || "POS Restaurante"}
         </h1>
         <p className="mb-6 text-center text-neutral-500">
           Ingresa tu PIN de cajero
