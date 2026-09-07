@@ -2,13 +2,15 @@ import { useState } from "react";
 import { CatalogScreen } from "../catalog/CatalogScreen";
 import { UsersScreen } from "./UsersScreen";
 import { BrandScreen } from "./BrandScreen";
+import { StatsScreen } from "./StatsScreen";
 
-type AdminTab = "catalogo" | "usuarios" | "marca";
+type AdminTab = "catalogo" | "usuarios" | "marca" | "estadistica";
 
 const TABS: { id: AdminTab; label: string }[] = [
   { id: "catalogo", label: "Catálogo" },
   { id: "usuarios", label: "Usuarios" },
   { id: "marca", label: "Marca" },
+  { id: "estadistica", label: "Estadística" },
 ];
 
 export function AdminScreen() {
@@ -36,6 +38,7 @@ export function AdminScreen() {
         {tab === "catalogo" && <CatalogScreen />}
         {tab === "usuarios" && <UsersScreen />}
         {tab === "marca" && <BrandScreen />}
+        {tab === "estadistica" && <StatsScreen />}
       </div>
     </div>
   );
