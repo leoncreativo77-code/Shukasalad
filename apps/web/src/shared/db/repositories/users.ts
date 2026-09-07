@@ -21,9 +21,15 @@ export async function listUsers(db: PosDatabase): Promise<User[]> {
   return rows.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-async function isPinTaken(db: PosDatabase, pinHash: string): Promise<boolean> {
+async function isPinTaken(
+  db: PosDatabase,
+  pinHash: string,
+  excludeUserId?: string,
+): Promise<boolean> {
   const rows = await db.users.toArray();
-  return rows.some((u) => u.pin_hash === pinHash && u.active);
+  return rows.some(
+    (u) => u.pin_hash === pinHash && u.active && u.id !== excludeUserId,
+  );
 }
 
 export interface NewUserInput {
@@ -77,4 +83,22 @@ export async function setUserActive(
   const now = new Date().toISOString();
   await db.users.update(id, { active, updated_at: now });
   await writeOutboxEvent(db, "user", id, "update", { id, active });
+}
+
+// Igual que en createUser: dos usuarios activos no pueden compartir PIN
+// porque el login busca por pin_hash exacto sin pedir nombre.
+export async function setUserPin(
+  db: PosDatabase,
+  id: string,
+  newPin: string,
+): Promise<void> {
+  const pinHash = await sha256Hex(newPin);
+  if (await isPinTaken(db, pinHash, id)) {
+    throw new Error("Ese PIN ya está en uso por otro usuario activo");
+  }
+
+  const now = new Date().toISOString();
+  await db.users.update(id, { pin_hash: pinHash, updated_at: now });
+  // No se manda el pin_hash a la nube: solo lo necesario para reportes.
+  await writeOutboxEvent(db, "user", id, "update", { id, updated_at: now });
 }

@@ -5,9 +5,11 @@ import {
   createUser,
   listUsers,
   setUserActive,
+  setUserPin,
 } from "../../shared/db/repositories/users";
 import { TouchButton } from "../../shared/components/TouchButton";
 import { NewUserModal } from "./NewUserModal";
+import { ChangePinModal } from "./ChangePinModal";
 
 const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Administrador",
@@ -18,6 +20,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 export function UsersScreen() {
   const [users, setUsers] = useState<User[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [pinTarget, setPinTarget] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
@@ -49,6 +52,14 @@ export function UsersScreen() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear el usuario");
     }
+  }
+
+  async function handleChangePin(pin: string) {
+    if (!pinTarget) return;
+    const db = await getDb();
+    await setUserPin(db, pinTarget.id, pin);
+    setPinTarget(null);
+    await reload();
   }
 
   return (
@@ -101,6 +112,12 @@ export function UsersScreen() {
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button
+                    onClick={() => setPinTarget(user)}
+                    className="mr-4 text-sm font-medium text-neutral-400 hover:text-neutral-600"
+                  >
+                    Cambiar PIN
+                  </button>
+                  <button
                     onClick={() => handleToggleActive(user.id, !user.active)}
                     className="text-sm font-medium text-neutral-400 hover:text-neutral-600"
                   >
@@ -117,6 +134,14 @@ export function UsersScreen() {
         <NewUserModal
           onCancel={() => setShowForm(false)}
           onSubmit={handleCreate}
+        />
+      )}
+
+      {pinTarget && (
+        <ChangePinModal
+          userName={pinTarget.name}
+          onCancel={() => setPinTarget(null)}
+          onSubmit={handleChangePin}
         />
       )}
     </div>

@@ -2,10 +2,11 @@ import type { PosDatabase } from "./client";
 
 const NOW = "2026-01-01T00:00:00.000Z";
 
-// Catálogo real de Shuka Salads. Cajero demo, PIN 1234 (SHA-256, ver
-// shared/auth/pinHash.ts). Tasa de IVA 16% (México). Una cash_session
-// abierta de prueba: el flujo real de apertura de caja se construye en la
-// siguiente etapa.
+// Catálogo real de Shuka Salads. Admin demo, PIN 1973 (SHA-256, ver
+// shared/auth/pinHash.ts) -- cambiable después desde Admin > Usuarios >
+// Cambiar PIN, esto solo es el valor inicial para una instalación nueva.
+// Tasa de IVA 16% (México). Una cash_session abierta de prueba: el flujo
+// real de apertura de caja se construye en la siguiente etapa.
 export async function seedIfEmpty(db: PosDatabase): Promise<void> {
   const userCount = await db.users.count();
   if (userCount > 0) return;
@@ -14,7 +15,7 @@ export async function seedIfEmpty(db: PosDatabase): Promise<void> {
     id: "1685762f-b276-4057-939e-8d7a066d6860",
     name: "Cajero Demo",
     pin_hash:
-      "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+      "9baed8fceea6e36d36670d72429d909547165efc038c293a14a41ef2edf83141",
     role: "admin",
     active: true,
     created_at: NOW,
