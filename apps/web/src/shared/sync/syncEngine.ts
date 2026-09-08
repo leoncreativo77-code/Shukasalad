@@ -187,10 +187,30 @@ export async function syncCatalog(db: PosDatabase): Promise<CatalogSyncResult> {
       return { ran: true, mode: "bootstrap" };
     }
 
+    // No pisar con el pull ninguna entidad que todavía tenga un cambio local
+    // sin subir (runSync ya corrió justo antes en el mismo tick, así que si
+    // algo sigue pendiente acá es porque su push falló recién -- no porque
+    // todavía no le tocara). Sin este filtro, un pull podría revertir ese
+    // cambio local al valor viejo de Supabase.
+    const pendingIds = new Set(
+      (await db.outbox_events.toArray())
+        .filter((e) => !e.synced_at)
+        .map((e) => `${e.entity_type}:${e.entity_id}`),
+    );
+    const freshCategories = (remoteCategories ?? []).filter(
+      (c) => !pendingIds.has(`category:${c.id}`),
+    );
+    const freshProducts = (remoteProducts ?? []).filter(
+      (p) => !pendingIds.has(`product:${p.id}`),
+    );
+    const freshSettings = (remoteSettings ?? []).filter(
+      (s) => !pendingIds.has(`app_setting:${s.key}`),
+    );
+
     await Promise.all([
-      remoteCategories?.length ? db.categories.bulkPut(remoteCategories) : Promise.resolve(),
-      remoteProducts?.length ? db.products.bulkPut(remoteProducts) : Promise.resolve(),
-      remoteSettings?.length ? db.app_settings.bulkPut(remoteSettings) : Promise.resolve(),
+      freshCategories.length ? db.categories.bulkPut(freshCategories) : Promise.resolve(),
+      freshProducts.length ? db.products.bulkPut(freshProducts) : Promise.resolve(),
+      freshSettings.length ? db.app_settings.bulkPut(freshSettings) : Promise.resolve(),
     ]);
     await pullMissingImages(db, supabase);
     return { ran: true, mode: "pull" };

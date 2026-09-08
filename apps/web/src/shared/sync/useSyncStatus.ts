@@ -36,15 +36,19 @@ export function useSyncStatus(): { status: SyncStatus; pendingCount: number } {
       }
 
       setStatus("syncing");
-      // Primero baja el catálogo compartido (categorías/productos/marca/
-      // imágenes) para que este dispositivo vea lo último que se haya
-      // agregado desde cualquier otro, y recién después empuja los cambios
-      // hechos localmente -- así un dispositivo que solo consulta (sin
-      // ediciones propias) también se mantiene al día.
-      await syncCatalog(db);
+      // Primero empuja los cambios locales pendientes, y recién después baja
+      // el catálogo compartido. En ese orden: si baja primero, un pull puede
+      // pisar (bulkPut) un campo que este dispositivo cambió hace instantes
+      // pero todavía no había subido -- y como el push posterior lee el
+      // estado ACTUAL en Dexie (no el payload original del evento), terminaría
+      // subiendo de vuelta el valor viejo ya pisado y marcando el evento como
+      // sincronizado, perdiendo el cambio real para siempre. Empujar primero
+      // elimina esa ventana. (syncCatalog además excluye por las dudas
+      // cualquier entidad con un evento todavía pendiente en el outbox.)
+      const result = await runSync(db);
       if (cancelled) return;
 
-      const result = await runSync(db);
+      await syncCatalog(db);
       if (cancelled) return;
 
       const count = await countPendingSync(db);
