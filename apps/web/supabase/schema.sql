@@ -145,6 +145,29 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- Lectura pública del catálogo (categories, products, app_settings): esto es
+-- lo que permite que cualquier dispositivo que abra la app -- no solo el que
+-- hizo el cambio -- vea el mismo menú/marca. No requiere el secreto: es
+-- información de menú, no datos sensibles. Deliberadamente NO se agrega
+-- SELECT a users/orders/order_items/order_item_modifiers -- esas tablas
+-- solo deben poder escribirse (respaldo), nunca leerse públicamente (PINs de
+-- cajeros, ventas, datos de clientes).
+-- ---------------------------------------------------------------------------
+
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['categories', 'products', 'app_settings']
+  loop
+    execute format(
+      'create policy "public read" on public.%I for select using (true)',
+      t
+    );
+  end loop;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Storage: bucket "images" para las fotos de producto y de marca (logo,
 -- fondo). Créalo desde el Dashboard (Storage > New bucket > nombre "images",
 -- privado) antes de correr las políticas de abajo.
@@ -158,3 +181,10 @@ create policy "sync update images"
 on storage.objects for update
 using (bucket_id = 'images' and public.has_sync_secret())
 with check (bucket_id = 'images' and public.has_sync_secret());
+
+-- Lectura pública de imágenes (fotos de producto/marca) -- mismo criterio
+-- que arriba: no son datos sensibles, y hace falta para que otros
+-- dispositivos puedan descargar las fotos que subiste desde el tuyo.
+create policy "public read images"
+on storage.objects for select
+using (bucket_id = 'images');

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getDb } from "../db/client";
 import { isSyncConfigured } from "./supabaseClient";
-import { countPendingSync, runSync } from "./syncEngine";
+import { countPendingSync, runSync, syncCatalog } from "./syncEngine";
 
 export type SyncStatus =
   | "disabled" // sin VITE_SUPABASE_* configuradas -- respaldo no activado
@@ -36,6 +36,14 @@ export function useSyncStatus(): { status: SyncStatus; pendingCount: number } {
       }
 
       setStatus("syncing");
+      // Primero baja el catálogo compartido (categorías/productos/marca/
+      // imágenes) para que este dispositivo vea lo último que se haya
+      // agregado desde cualquier otro, y recién después empuja los cambios
+      // hechos localmente -- así un dispositivo que solo consulta (sin
+      // ediciones propias) también se mantiene al día.
+      await syncCatalog(db);
+      if (cancelled) return;
+
       const result = await runSync(db);
       if (cancelled) return;
 
