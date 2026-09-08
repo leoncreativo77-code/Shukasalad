@@ -16,9 +16,14 @@ const SYNC_INTERVAL_MS = 20_000;
 // Corre el motor de sync cada 20s y al recuperar conexión, mientras la app
 // está abierta. Nunca bloquea la UI: cualquier pantalla puede seguir
 // leyendo/escribiendo local sin importar el estado de este hook.
-export function useSyncStatus(): { status: SyncStatus; pendingCount: number } {
+export function useSyncStatus(): {
+  status: SyncStatus;
+  pendingCount: number;
+  lastCatalogError: string | null;
+} {
   const [status, setStatus] = useState<SyncStatus>("disabled");
   const [pendingCount, setPendingCount] = useState(0);
+  const [lastCatalogError, setLastCatalogError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isSyncConfigured()) return;
@@ -48,12 +53,19 @@ export function useSyncStatus(): { status: SyncStatus; pendingCount: number } {
       const result = await runSync(db);
       if (cancelled) return;
 
-      await syncCatalog(db);
+      const catalogResult = await syncCatalog(db);
       if (cancelled) return;
+      setLastCatalogError(catalogResult.error ?? null);
 
       const count = await countPendingSync(db);
       setPendingCount(count);
-      setStatus(result.failed > 0 ? "error" : count > 0 ? "pending" : "synced");
+      setStatus(
+        result.failed > 0 || catalogResult.error
+          ? "error"
+          : count > 0
+            ? "pending"
+            : "synced",
+      );
     }
 
     tick();
@@ -67,5 +79,5 @@ export function useSyncStatus(): { status: SyncStatus; pendingCount: number } {
     };
   }, []);
 
-  return { status, pendingCount };
+  return { status, pendingCount, lastCatalogError };
 }

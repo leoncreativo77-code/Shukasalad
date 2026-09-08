@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuthStore } from "../shared/auth/store";
 import { useBranding } from "../shared/branding/useBranding";
@@ -29,17 +30,37 @@ const SYNC_DOT_CLASSES: Record<string, string> = {
 // Punto + etiqueta discretos: solo se muestran si el respaldo a servidor
 // está configurado (ver shared/sync/supabaseClient.ts) -- si no, la app no
 // dice nada al respecto, igual que antes de que existiera esta función.
+//
+// Cuando el estado es "error", es tocable/clickeable: muestra el mensaje de
+// error real debajo. Sin esto, diagnosticar por qué un dispositivo puntual
+// (celular, tablet) no baja bien el catálogo requeriría acceso a las
+// herramientas de desarrollador de ESE dispositivo -- en la práctica,
+// imposible de pedirle a la mayoría de los usuarios en un iPad/celular. Con
+// el mensaje en pantalla, alcanza con una captura de pantalla.
 function SyncIndicator() {
-  const { status, pendingCount } = useSyncStatus();
+  const { status, pendingCount, lastCatalogError } = useSyncStatus();
+  const [showError, setShowError] = useState(false);
   if (status === "disabled") return null;
 
+  const clickable = status === "error" && !!lastCatalogError;
+
   return (
-    <span className="flex items-center gap-1.5 text-sm text-neutral-500">
-      <span className={`h-2 w-2 rounded-full ${SYNC_DOT_CLASSES[status]}`} />
-      {SYNC_LABEL[status]}
-      {(status === "pending" || status === "offline") && pendingCount > 0
-        ? ` (${pendingCount})`
-        : ""}
+    <span className="relative">
+      <span
+        className={`flex items-center gap-1.5 text-sm text-neutral-500 ${clickable ? "cursor-pointer underline decoration-dotted" : ""}`}
+        onClick={clickable ? () => setShowError((v) => !v) : undefined}
+      >
+        <span className={`h-2 w-2 rounded-full ${SYNC_DOT_CLASSES[status]}`} />
+        {SYNC_LABEL[status]}
+        {(status === "pending" || status === "offline") && pendingCount > 0
+          ? ` (${pendingCount})`
+          : ""}
+      </span>
+      {clickable && showError && (
+        <div className="absolute right-0 top-full z-10 mt-1 w-72 rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-700 shadow-lg">
+          {lastCatalogError}
+        </div>
+      )}
     </span>
   );
 }

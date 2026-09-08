@@ -135,6 +135,7 @@ export async function countPendingSync(db: PosDatabase): Promise<number> {
 export interface CatalogSyncResult {
   ran: boolean;
   mode: "bootstrap" | "pull" | "none";
+  error?: string;
 }
 
 // Mantiene el catálogo (categorías, productos, ajustes de marca e imágenes)
@@ -214,10 +215,16 @@ export async function syncCatalog(db: PosDatabase): Promise<CatalogSyncResult> {
     ]);
     await pullMissingImages(db, supabase);
     return { ran: true, mode: "pull" };
-  } catch {
+  } catch (err) {
     // Sin internet a mitad de camino, Supabase pausado, etc. -- el
-    // dispositivo sigue funcionando con lo que ya tenía en caché local.
-    return { ran: false, mode: "none" };
+    // dispositivo sigue funcionando con lo que ya tenía en caché local. Se
+    // devuelve el mensaje (en vez de tragárselo en silencio como antes) para
+    // que useSyncStatus pueda mostrarlo -- sin esto, un dispositivo cuya
+    // bajada de catálogo falla en cada intento parecía "Respaldado" en verde
+    // igual, porque el estado solo miraba si HABÍA algo pendiente por subir,
+    // nunca si bajar el catálogo realmente funcionó.
+    const message = err instanceof Error ? err.message : String(err);
+    return { ran: false, mode: "none", error: message };
   }
 }
 
