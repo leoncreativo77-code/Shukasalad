@@ -19,13 +19,19 @@ export interface OrderTotals {
   total: number;
 }
 
+// Los precios que se capturan por producto son el precio final al público
+// (IVA incluido) -- así se muestran en el menú y así se espera que se cobren
+// en México (PROFECO exige precio final, no "+IVA" al momento de pagar). Por
+// eso el IVA se calcula "hacia adentro": el total es la suma de precios tal
+// cual, y el subtotal/impuesto se derivan de ahí (para el desglose del
+// recibo y para reportar), no se suman aparte.
 export function calculateOrderTotals(
   lines: CartLine[],
   taxRate: number,
 ): OrderTotals {
-  const subtotal = round2(lines.reduce((sum, line) => sum + lineTotal(line), 0));
-  const taxAmount = round2(subtotal * taxRate);
-  const total = round2(subtotal + taxAmount);
+  const total = round2(lines.reduce((sum, line) => sum + lineTotal(line), 0));
+  const subtotal = round2(total / (1 + taxRate));
+  const taxAmount = round2(total - subtotal);
   return { subtotal, taxAmount, total };
 }
 
