@@ -154,6 +154,7 @@ export interface CatalogSyncResult {
 // poder seguir vendiendo con el catálogo que ya tenía en caché aunque falle
 // la sincronización.
 export async function syncCatalog(db: PosDatabase): Promise<CatalogSyncResult> {
+  console.log("SYNC_BUILD_MARKER_V3_PUSH_BEFORE_PULL");
   const supabase = getSupabase();
   if (!supabase || !navigator.onLine) return { ran: false, mode: "none" };
 
