@@ -23,10 +23,11 @@ const handlers: Record<string, EntityHandler> = {
     const row = await db.products.get(id);
     if (row) await sb.from("products").upsert(row).throwOnError();
   },
-  user: async (db, sb, id) => {
-    const row = await db.users.get(id);
-    if (row) await sb.from("users").upsert(row).throwOnError();
-  },
+  // Los usuarios (cajeros y su PIN) se quedan solo en el dispositivo donde se
+  // crean -- no hay handler "user" a propósito. No es algo que se pidió
+  // sincronizar, y evita exponer pin_hash fuera del dispositivo. Un evento
+  // "user" en el outbox se descarta silenciosamente como cualquier otro tipo
+  // sin handler (ver el bucle de runSync más abajo).
   app_setting: async (db, sb, key) => {
     const row = await db.app_settings.get(key);
     if (row) await sb.from("app_settings").upsert(row).throwOnError();

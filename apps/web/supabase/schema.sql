@@ -129,7 +129,7 @@ declare
   t text;
 begin
   foreach t in array array[
-    'categories', 'products', 'users', 'app_settings',
+    'categories', 'products', 'app_settings',
     'orders', 'order_items', 'order_item_modifiers'
   ]
   loop
@@ -143,6 +143,10 @@ begin
     );
   end loop;
 end $$;
+
+-- public.users se queda con RLS habilitado y SIN políticas (bloqueada por
+-- completo): a propósito no se sincroniza (ver syncEngine.ts) para no
+-- exponer pin_hash de los cajeros fuera de cada dispositivo.
 
 -- ---------------------------------------------------------------------------
 -- Lectura pública del catálogo (categories, products, app_settings): esto es
